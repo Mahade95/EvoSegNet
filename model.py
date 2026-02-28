@@ -1,7 +1,6 @@
 from tensorflow.keras.layers import Layer, Conv3D, Activation
 from tensorflow.keras.utils import get_custom_objects
 import tensorflow.keras.backend as K
-import keras.backend as K
 import tensorflow as tf
 from keras.models import Model
 from keras.layers import Input, LayerNormalization, Conv3D, MaxPooling3D, Conv3DTranspose, concatenate, Dropout, Activation, add, UpSampling3D, AveragePooling3D, Lambda, subtract, multiply
@@ -85,10 +84,8 @@ def multi_scale_context_modulation(x, filters, dilation_rate, use_1x1_fusion, ac
     psi = Activation('sigmoid')(psi)
     
     # Final output modulated by attention
-    fusion = multiply([x, psi])
-    
+    fusion = multiply([fusion, psi])
     return fusion
-
 
 # --- Hybrid Frequency Feature Extraction ---
 def hybrid_frequency_feature_extraction(x, filters, pooling_type, combine_strategy, activation, kernel_size):
@@ -119,12 +116,12 @@ def uncertainty_guided_refinement(x, filters, uncertainty_weight, activation, ke
     return Lambda(lambda t: t * uncertainty_weight)(conv)
 
 
-# --- U-Net Model with Novel Modules + Attention Gate ---
+# --- U-Net Model ---
 def build_unet_model(input_shape, num_layers, filters, activation, dropout_rate, num_classes,
                     kernel_size, pooling_type, combine_strategy, dilation_rate, use_1x1_fusion,
                     uncertainty_weight):
     inputs = Input(shape=input_shape)
-    x = Conv3D(filters, kernel_size=1, strides=2, activation=activation, padding='same')(inputs)
+    x = Conv3D(filters, kernel_size=1, activation=activation, padding='same')(inputs)
     x = LayerNormalization()(x)
 
     # x = inputs
@@ -176,5 +173,6 @@ def build_unet_model(input_shape, num_layers, filters, activation, dropout_rate,
     outputs = Conv3D(num_classes, 1, activation='softmax')(x)
     model = Model(inputs, outputs)
     return model
+
 
 
