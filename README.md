@@ -1,5 +1,4 @@
 # EvoSegNet: Supplementary Material
-
 This repository contains supplementary experimental results and architectural analysis for:
 
 **EvoSegNet: Multi-Scale and Uncertainty-Aware Evolutionary Neural Architecture Search for Efficient 3D Medical Image Segmentation**
