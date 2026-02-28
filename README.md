@@ -11,6 +11,8 @@ This repository contains supplementary materials for the paper:
 - Additional qualitative results (BraTS 2020 cross-dataset)
 - Reproducibility details
 
+![ACDC Metrics](acdc_dsc_hd_iou.jpg)
+
 ## Reproducibility
 
 Experiments were conducted using:
