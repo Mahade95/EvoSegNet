@@ -28,7 +28,7 @@ class DepthwiseSeparableConv3D(Layer):
             strides=self.strides,
             dilation_rate=self.dilation_rate,
             padding=self.padding,
-            groups=in_channels,
+            groups=min(in_channels, 32),
             use_bias=self.use_bias
         )
 
@@ -57,10 +57,9 @@ get_custom_objects().update({'DepthwiseSeparableConv3D': DepthwiseSeparableConv3
 
 
 
-
-def multi_scale_context_modulation(x, filters, dilation_rate, use_1x1_fusion, activation):
+def multi_scale_context_modulation(x, filters, dilation_rate, use_1x1_fusion, activation, kernel_size):
     convs = [
-        DepthwiseSeparableConv3D(filters=filters, kernel_size=1, strides=1,
+        DepthwiseSeparableConv3D(filters=filters, kernel_size=kernel_size, strides=1,
                                  dilation_rate=d, activation=activation,
                                  padding='same', use_bias=True)(x)
         for d in dilation_rate
@@ -69,7 +68,7 @@ def multi_scale_context_modulation(x, filters, dilation_rate, use_1x1_fusion, ac
     fusion = add(convs)
     
     if use_1x1_fusion:
-        fusion = DepthwiseSeparableConv3D(filters=filters, kernel_size=1, activation=activation)(fusion)
+        fusion = DepthwiseSeparableConv3D(filters=filters, kernel_size=kernel_size, activation=activation)(fusion)
 
     theta_x = Conv3D(filters // 2, 1, padding='same')(x)
     phi_g = Conv3D(filters // 2, 1, padding='same')(fusion)
@@ -77,18 +76,19 @@ def multi_scale_context_modulation(x, filters, dilation_rate, use_1x1_fusion, ac
     psi = Conv3D(1, 1, padding='same')(add_xg)
     psi = Activation('sigmoid')(psi)
     
-    fusion = multiply([fusion, psi])
+    fusion = multiply([x, psi])
     return fusion
 
 # Hybrid Frequency Feature Extraction
 def hybrid_frequency_feature_extraction(x, filters, pooling_type, combine_strategy, activation, kernel_size):
     low = AveragePooling3D(pool_size=2)(x) if pooling_type == 'avg' else MaxPooling3D(pool_size=2)(x)
     
-    low = DepthwiseSeparableConv3D(filters=filters, kernel_size=1, activation=activation)(low)
+    low = DepthwiseSeparableConv3D(filters=filters, kernel_size=kernel_size, activation=activation)(low)
     low = UpSampling3D(size=2)(low)
+    low = Lambda(lambda t: tf.image.resize(t, tf.shape(x)[1:4]))(low)
     
     high = subtract([x, low])
-    high = DepthwiseSeparableConv3D(filters=filters, kernel_size=1, activation=activation)(high)
+    high = DepthwiseSeparableConv3D(filters=filters, kernel_size=kernel_size, activation=activation)(high)
 
     combined = add([low, high]) if combine_strategy == 'add' else concatenate([low, high], axis=-1)
     return Activation(activation)(combined)
@@ -103,7 +103,7 @@ def uncertainty_guided_refinement(x, filters, uncertainty_weight, activation, ke
 
     mask = Activation('relu')(Conv3D(1, 1, padding='same')(var))
     refined = multiply([x, mask])
-    conv = DepthwiseSeparableConv3D(filters=filters, kernel_size=1, activation=activation)(refined)
+    conv = DepthwiseSeparableConv3D(filters=filters, kernel_size=kernel_size, activation=activation)(refined)
 
     return Lambda(lambda t: t * uncertainty_weight)(conv)
 
@@ -113,7 +113,7 @@ def build_unet_model(input_shape, num_layers, filters, activation, dropout_rate,
                     kernel_size, pooling_type, combine_strategy, dilation_rate, use_1x1_fusion,
                     uncertainty_weight):
     inputs = Input(shape=input_shape)
-    x = Conv3D(filters, kernel_size=1, activation=activation, padding='same')(inputs)
+    x = Conv3D(filters, kernel_size=kernel_size, activation=activation, padding='same')(inputs)
     x = LayerNormalization()(x)
 
     # x = inputs
@@ -123,7 +123,7 @@ def build_unet_model(input_shape, num_layers, filters, activation, dropout_rate,
     # Encoder
     current_filters = filters
     for _ in range(num_layers):
-        x = Conv3D(current_filters, kernel_size = 1, activation=activation, padding='same')(x)
+        x = Conv3D(current_filters, kernel_size=kernel_size, activation=activation, padding='same')(x)
         x = hybrid_frequency_feature_extraction(x, current_filters, pooling_type, combine_strategy, activation, kernel_size)
         encoder_layers.append(x)
         x = MaxPooling3D(pool_size=2)(x)
@@ -132,7 +132,7 @@ def build_unet_model(input_shape, num_layers, filters, activation, dropout_rate,
         current_filters *= 2
 
     # Middle
-    x = Conv3D(current_filters, kernel_size=5, activation=activation, padding='same')(x)
+    x = Conv3D(current_filters, kernel_size=kernel_size, activation=activation, padding='same')(x)
     x = uncertainty_guided_refinement(x, current_filters, uncertainty_weight, activation, kernel_size)
     if dropout_rate > 0:
         x = Dropout(dropout_rate)(x)
@@ -146,15 +146,15 @@ def build_unet_model(input_shape, num_layers, filters, activation, dropout_rate,
         x = Activation(activation)(x)
 
         skip = encoder_layers.pop()
-        skip = multi_scale_context_modulation(skip, current_filters, dilation_rate, use_1x1_fusion, activation)
+        skip = multi_scale_context_modulation(skip, current_filters, dilation_rate, use_1x1_fusion, activation, kernel_size)
 
         if previous_decoder_output is not None:
             prev_up = UpSampling3D(size=2)(previous_decoder_output)
-            x = concatenate([x, skip, prev_up])
+            x = concatenate([x, skip, prev_up]) #cross-scale fusion
         else:
             x = concatenate([x, skip])
 
-        x = Conv3D(current_filters, kernel_size=1, activation=activation, padding='same')(x)
+        x = Conv3D(current_filters, kernel_size=kernel_size, activation=activation, padding='same')(x)
         if dropout_rate > 0:
             x = Dropout(dropout_rate)(x)
 
