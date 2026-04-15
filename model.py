@@ -22,7 +22,6 @@ class DepthwiseSeparableConv3D(Layer):
     def build(self, input_shape):
         in_channels = input_shape[-1]
 
-        # Depthwise conv: groups = in_channels
         self.depthwise_conv = Conv3D(
             filters=in_channels,
             kernel_size=self.kernel_size,
@@ -33,7 +32,6 @@ class DepthwiseSeparableConv3D(Layer):
             use_bias=self.use_bias
         )
 
-        # Pointwise conv: 1x1x1
         self.pointwise_conv = Conv3D(
             filters=self.filters,
             kernel_size=1,
@@ -41,7 +39,6 @@ class DepthwiseSeparableConv3D(Layer):
             use_bias=self.use_bias
         )
 
-        # Activation (if provided)
         if self.activation:
             self.act = Activation(self.activation)
         else:
@@ -56,14 +53,12 @@ class DepthwiseSeparableConv3D(Layer):
             x = self.act(x)
         return x
 
-# Register the custom layer globally
 get_custom_objects().update({'DepthwiseSeparableConv3D': DepthwiseSeparableConv3D})
 
 
 
 
 def multi_scale_context_modulation(x, filters, dilation_rate, use_1x1_fusion, activation):
-    # Parallel depthwise separable convolutions with different dilation rates
     convs = [
         DepthwiseSeparableConv3D(filters=filters, kernel_size=1, strides=1,
                                  dilation_rate=d, activation=activation,
@@ -76,22 +71,19 @@ def multi_scale_context_modulation(x, filters, dilation_rate, use_1x1_fusion, ac
     if use_1x1_fusion:
         fusion = DepthwiseSeparableConv3D(filters=filters, kernel_size=1, activation=activation)(fusion)
 
-    # Attention gating
     theta_x = Conv3D(filters // 2, 1, padding='same')(x)
     phi_g = Conv3D(filters // 2, 1, padding='same')(fusion)
     add_xg = Activation('relu')(add([theta_x, phi_g]))
     psi = Conv3D(1, 1, padding='same')(add_xg)
     psi = Activation('sigmoid')(psi)
     
-    # Final output modulated by attention
     fusion = multiply([fusion, psi])
     return fusion
 
-# --- Hybrid Frequency Feature Extraction ---
+# Hybrid Frequency Feature Extraction
 def hybrid_frequency_feature_extraction(x, filters, pooling_type, combine_strategy, activation, kernel_size):
     low = AveragePooling3D(pool_size=2)(x) if pooling_type == 'avg' else MaxPooling3D(pool_size=2)(x)
     
-    # Apply DepthwiseSeparableConv3D properly
     low = DepthwiseSeparableConv3D(filters=filters, kernel_size=1, activation=activation)(low)
     low = UpSampling3D(size=2)(low)
     
@@ -101,7 +93,7 @@ def hybrid_frequency_feature_extraction(x, filters, pooling_type, combine_strate
     combined = add([low, high]) if combine_strategy == 'add' else concatenate([low, high], axis=-1)
     return Activation(activation)(combined)
 
-# --- Uncertainty-Guided Feature Refinement ---
+# Uncertainty-Guided Feature Refinement
 def uncertainty_guided_refinement(x, filters, uncertainty_weight, activation, kernel_size):
     var = Lambda(
         lambda x: tf.reduce_mean(
@@ -116,7 +108,7 @@ def uncertainty_guided_refinement(x, filters, uncertainty_weight, activation, ke
     return Lambda(lambda t: t * uncertainty_weight)(conv)
 
 
-# --- U-Net Model ---
+# Model
 def build_unet_model(input_shape, num_layers, filters, activation, dropout_rate, num_classes,
                     kernel_size, pooling_type, combine_strategy, dilation_rate, use_1x1_fusion,
                     uncertainty_weight):
@@ -156,7 +148,6 @@ def build_unet_model(input_shape, num_layers, filters, activation, dropout_rate,
         skip = encoder_layers.pop()
         skip = multi_scale_context_modulation(skip, current_filters, dilation_rate, use_1x1_fusion, activation)
 
-        # --- Apply attention gate ---
         if previous_decoder_output is not None:
             prev_up = UpSampling3D(size=2)(previous_decoder_output)
             x = concatenate([x, skip, prev_up])
@@ -173,6 +164,4 @@ def build_unet_model(input_shape, num_layers, filters, activation, dropout_rate,
     outputs = Conv3D(num_classes, 1, activation='softmax')(x)
     model = Model(inputs, outputs)
     return model
-
-
 
