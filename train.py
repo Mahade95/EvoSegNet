@@ -98,7 +98,6 @@ def crossover(p1: Dict[str, Any], p2: Dict[str, Any]) -> Dict[str, Any]:
 def crossover_and_mutate(p1: Dict[str, Any], p2: Dict[str, Any], mutation_rate: float) -> Dict[str, Any]:
     return mutate(crossover(p1, p2), search_space, p=mutation_rate)
 
-
 import numpy as np
 from scipy.spatial.distance import cdist
 
@@ -191,8 +190,6 @@ def classwise_metrics_generic(
         'hd95_per_class': hd_pc
     }
 
-
-
 # model & complexity utilities
 def best_model(input_shape,
                num_layers,
@@ -249,11 +246,31 @@ def compute_params_m(model: tf.keras.Model) -> float:
     return float(model.count_params() / 1e6)
 
 def compute_flops_g(model: tf.keras.Model, sample_shape: Tuple[int, ...]) -> float:
-    """
-    lightweight proxy; accurate flops need tf profiler. we return 0 and
-    rely on normalization to null it out unless you replace this with your estimator.
-    """
-    return 0.0
+    concrete_func = tf.function(lambda x: model(x))
+    concrete_func = concrete_func.get_concrete_function(
+        tf.TensorSpec([1] + list(sample_shape), tf.float32)
+    )
+
+    frozen_func = tf.python.framework.convert_to_constants.convert_variables_to_constants_v2(concrete_func)
+    graph_def = frozen_func.graph.as_graph_def()
+
+    with tf.Graph().as_default() as graph:
+        tf.import_graph_def(graph_def, name='')
+
+        run_meta = tf.compat.v1.RunMetadata()
+        opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
+
+        flops = tf.compat.v1.profiler.profile(
+            graph=graph,
+            run_meta=run_meta,
+            cmd='op',
+            options=opts
+        )
+
+    if flops is None:
+        return 0.0
+
+    return float(flops.total_float_ops / 1e9)  
 
 def estimate_latency_ms(model: tf.keras.Model, sample: np.ndarray = None, iters: int = 5) -> float:
     """
@@ -270,7 +287,6 @@ def estimate_latency_ms(model: tf.keras.Model, sample: np.ndarray = None, iters:
     dt = (time.time() - t0) / iters
     return float(dt * 1000.0)
 
-
 # evaluation / fitness
 def minmax_norm(x: float, lo: float, hi: float) -> float:
     if hi <= lo:
@@ -285,7 +301,7 @@ def evaluate_fitness(indiv: Dict[str, Any],
                      gen: int,
                      idx: int) -> Tuple[float, Dict[str, Any]]:
     # 1) build model for this individual
-    model = best_model(
+    model = build_unet_model(
         input_shape=input_shape,
         num_layers=indiv['num_layers'],
         dilation_rate=indiv['dilation_rate'],
@@ -373,7 +389,6 @@ def select_best_individuals(population: List[Dict[str, Any]],
     sorted_pop = [x for _, x in sorted(zip(fitness_scores, population), key=lambda pair: pair[0], reverse=True)]
     return sorted_pop[:num_selections]
 
- 
 # evolutionary search loop
 population = [sample_individual(search_space) for _ in range(population_size)]
 global_best_fitness = -np.inf
