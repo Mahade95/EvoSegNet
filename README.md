@@ -10,21 +10,14 @@ This repository contains supplementary experimental results and architectural an
 ### DSC vs FLOPs vs Filters
 
 <p align="center">
-  <img src="brats_dsc_flops_filter.jpg" width="70%">
+  <img src="BraTs__DSC_vs_Flops_vs_Filter-01.jpg" width="70%">
 </p>
 
 ### DSC vs FLOPs vs Parameters
 
 <p align="center">
-  <img src="brats_dsc_flops_params.jpg" width="70%">
+  <img src="BraTs__DSC_vs_Flops_vs_Params-01.jpg" width="70%">
 </p>
-
-### Training Metrics (DSC, HD95, IoU)
-
-<p align="center">
-  <img src="brats_metrics.jpg" width="70%">
-</p>
-
 ---
 
 ## 2. ACDC – Architectural Search Analysis
@@ -32,19 +25,13 @@ This repository contains supplementary experimental results and architectural an
 ### DSC vs FLOPs vs Filters
 
 <p align="center">
-  <img src="acdc_dsc_flops_filter.jpg" width="70%">
+  <img src="ACDC_DSC_vs_Flops_vs_Filter-01.jpg" width="70%">
 </p>
 
 ### DSC vs FLOPs vs Parameters
 
 <p align="center">
-  <img src="acdc_dsc_flops_params.jpg" width="70%">
-</p>
-
-### Training Metrics (DSC, HD95, IoU)
-
-<p align="center">
-  <img src="acdc_metrics.jpg" width="70%">
+  <img src="ACDC_DSC_vs_Flops_vs_Params-01.jpg" width="70%">
 </p>
 
 ---
