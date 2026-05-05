@@ -64,27 +64,26 @@ These supplementary results provide further evidence of EvoSegNet’s efficiency
 
 <h2>Independent Run Consistency Analysis</h2>
 
-<p>
-To evaluate training stability and reproducibility, <b>EvoSegNet</b> was trained across 
-<b>three independent runs (100 epochs each)</b> on both datasets.
-Performance trends include <b>DSC</b>, <b>IoU</b>, and <b>HD95</b> for training and validation phases.
-</p>
+This section presents the independent run consistency and variance analysis of EvoSegNet on the BraTS 2021 and ACDC datasets. The model was trained across three independent runs, each for 100 epochs. To evaluate stability, per-epoch statistics were computed as mean $\pm$ standard deviation (SD) for both training and validation phases. The evaluation metrics are organised based on clinical relevance, including dice similarity coefficient (DSC, higher is better), intersection over union (IoU, higher is better), and the 95th percentile Hausdorff Distance (HD95, in millimetres, lower is better).
+
+The epoch-wise trajectories for each independent run are presented in below Figure, where each figure jointly illustrates the results for the BraTS 2021 and ACDC datasets. Across all runs, both datasets demonstrate smooth convergence behaviour with minimal variation between training and validation curves. The low dispersion in DSC and IoU, together with consistently decreasing HD95, indicates stable optimisation and reliable boundary delineation across independent trainings.
+
 
 <hr>
 
 <h3>🧠 BraTS 2021 – Independent Runs</h3>
 
-<h4>🔹 Run 1</h4>
+<h4>🔹🧠 BraTS 2021 – Run 1</h4>
 <p align="center">
   <img src="BraTS_Run_1_metrics-01.jpg" width="70%">
 </p>
 
-<h4>🔹 Run 2</h4>
+<h4>🔹🧠 BraTS 2021 – Run 2</h4>
 <p align="center">
   <img src="BraTS_Run_2_metrics-01.jpg" width="70%">
 </p>
 
-<h4>🔹 Run 3</h4>
+<h4>🔹🧠 BraTS 2021 – Run 3</h4>
 <p align="center">
   <img src="BraTS_Run_3_metrics-01.jpg" width="70%">
 </p>
@@ -93,17 +92,17 @@ Performance trends include <b>DSC</b>, <b>IoU</b>, and <b>HD95</b> for training 
 
 <h3>❤️ ACDC – Independent Runs</h3>
 
-<h4>🔹 Run 1</h4>
+<h4>🔹❤️ ACDC – Run 1</h4>
 <p align="center">
   <img src="ACDC_Run_1_metrics.jpg" width="70%">
 </p>
 
-<h4>🔹 Run 2</h4>
+<h4>🔹❤️ ACDC – Run 2</h4>
 <p align="center">
   <img src="ACDC_Run_2_metrics.jpg" width="70%">
 </p>
 
-<h4>🔹 Run 3</h4>
+<h4>🔹❤️ ACDC – Run 3</h4>
 <p align="center">
   <img src="ACDC_Run_3_metrics.jpg" width="70%">
 </p>
